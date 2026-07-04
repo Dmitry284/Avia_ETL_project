@@ -1,0 +1,56 @@
+[
+  {
+    "airport_code": "SVO",
+    "timestamp": "2024-01-15T09:00:00Z",
+    "temperature": -5,
+    "humidity": 78,
+    "wind_speed": 12,
+    "visibility": 8000,
+    "conditions": "cloudy"
+  },
+  {
+    "airport_code": "SVO",
+    "timestamp": "2024-01-15T12:00:00Z",
+    "temperature": -3,
+    "humidity": 75,
+    "wind_speed": 10,
+    "visibility": 10000,
+    "conditions": "partly_cloudy"
+  },
+  {
+    "airport_code": "LED",
+    "timestamp": "2024-01-15T11:00:00Z",
+    "temperature": -7,
+    "humidity": 82,
+    "wind_speed": 15,
+    "visibility": 6000,
+    "conditions": "snow"
+  },
+  {
+    "airport_code": "LED",
+    "timestamp": "2024-01-15T15:00:00Z",
+    "temperature": -6,
+    "humidity": 80,
+    "wind_speed": 13,
+    "visibility": 7000,
+    "conditions": "cloudy"
+  },
+  {
+    "airport_code": "SVX",
+    "timestamp": "2024-01-16T07:00:00Z",
+    "temperature": -12,
+    "humidity": 70,
+    "wind_speed": 8,
+    "visibility": 10000,
+    "conditions": "clear"
+  },
+  {
+    "airport_code": "SVX",
+    "timestamp": "2024-01-16T11:00:00Z",
+    "temperature": -10,
+    "humidity": 72,
+    "wind_speed": 9,
+    "visibility": 9000,
+    "conditions": "clear"
+  }
+]

@@ -1,0 +1,147 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: aviation_postgres
+    environment:
+      POSTGRES_USER: aviation_user
+      POSTGRES_PASSWORD: aviation_pass
+      POSTGRES_DB: booking_db
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sources/booking_db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - aviation_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aviation_user -d booking_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airflow-db:
+    image: postgres:15
+    container_name: airflow_postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow_pgdata:/var/lib/postgresql/data
+    networks:
+      - aviation_network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  airflow-init:
+    image: apache/airflow:2.7.3
+    container_name: airflow_init
+    env_file:
+      - .env
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+      - AIRFLOW__CORE__FERNET_KEY=YourFernetKeyHere123456789012345678901=
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+    networks:
+      - aviation_network
+    user: "${AIRFLOW_UID:-50000}:0"
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db init
+        airflow users create \
+          --username admin \
+          --password admin \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@aviation.local
+        exit 0
+
+  airflow-webserver:
+    image: apache/airflow:2.7.3
+    container_name: airflow_webserver
+    env_file:
+      - .env
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+      - AIRFLOW__CORE__FERNET_KEY=YourFernetKeyHere123456789012345678901=
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./scripts:/opt/airflow/scripts
+      - ./sources:/opt/airflow/sources
+    ports:
+      - "8080:8080"
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - aviation_network
+    user: "${AIRFLOW_UID:-50000}:0"
+    command: webserver
+
+  airflow-scheduler:
+    image: apache/airflow:2.7.3
+    container_name: airflow_scheduler
+    env_file:
+      - .env
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+      - AIRFLOW__CORE__FERNET_KEY=YourFernetKeyHere123456789012345678901=
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./scripts:/opt/airflow/scripts
+      - ./sources:/opt/airflow/sources
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - aviation_network
+    user: "${AIRFLOW_UID:-50000}:0"
+    command: scheduler
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@aviation.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - aviation_network
+
+volumes:
+  postgres_data:
+  airflow_pgdata:
+
+networks:
+  aviation_network:
+    driver: bridge
