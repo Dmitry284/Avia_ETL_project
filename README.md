@@ -1,5 +1,4 @@
-# Aviation ETL System
-
+Aviation ETL System
 ETL-система для консолидации данных авиапредприятия.
 
 ## Структура проекта
@@ -17,10 +16,8 @@ docker-compose up -d
 cat > README.md << 'EOF'
 # Aviation ETL System 
 
-ETL-система для консолидации данных авиапредприятия. 
-
 ## Структура проекта 
-`sources/` - Источники данных 
+`sources/` - Источники данных
 `sql_schema/` - Схема DWH                         
 `scripts/` - ETL скрипты              
 `output/` - Результаты работы 
