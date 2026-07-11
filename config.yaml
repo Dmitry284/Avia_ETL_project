@@ -1,0 +1,44 @@
+sources:
+  # PostgreSQL база данных с бронированиями
+  postgres:
+    enabled: true
+    host: localhost
+    port: 5434
+    database: booking_db
+    user: aviation_user
+    password: aviation_pass
+    table: raw_bookings
+  
+  csv_flights:
+    enabled: true
+    files:
+      - /home/oem123/Рабочий стол/test_flights.csv
+      - /home/oem123/Рабочий стол/avia_ETL/sources/csv_reports/flights_report.csv
+  csv_maintenance:
+    enabled: true
+    files:
+      - /home/oem123/Рабочий стол/maintenance_report.csv
+  # JSON логи сервера
+  json_logs:
+    enabled: true
+    file: /home/oem123/Рабочий стол/avia_ETL/sources/logs/server_logs.json
+  
+  # JSON API погоды (мок)
+  api_weather:
+    enabled: true
+    file: /home/oem123/Рабочий стол/avia_ETL/sources/api_mocks/weather_api.json
+
+# Целевое хранилище (DWH)
+target:
+  host: localhost
+  port: 5434
+  database: aviation_dwh
+  user: aviation_user
+  password: aviation_pass
+  schema: dwh
+
+processing:
+  on_validation_error: skip
+  
+  # Логировать подробную информацию
+  verbose_logging: true

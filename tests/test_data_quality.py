@@ -4,7 +4,6 @@ from sqlalchemy import create_engine, text
 import os
 from dotenv import load_dotenv
 
-# Загружаем переменные окружения
 load_dotenv()
 
 # Создаем подключение к DWH
@@ -19,7 +18,7 @@ def get_dwh_engine():
     return create_engine(connection_string)
 
 class TestDataQuality:
-    """Тесты качества данных в DWH"""
+    """Тесты качества данных в DWH (для схемы 3НФ)"""
     
     @pytest.fixture
     def engine(self):
@@ -80,9 +79,9 @@ class TestDataQuality:
     def test_no_duplicate_dates(self, engine):
         """Проверка отсутствия дубликатов дат"""
         query = """
-        SELECT date_key, COUNT(*) as cnt 
+        SELECT date_id, COUNT(*) as cnt 
         FROM dwh.dim_dates 
-        GROUP BY date_key 
+        GROUP BY date_id 
         HAVING COUNT(*) > 1
         """
         result = pd.read_sql(query, engine)
@@ -98,10 +97,11 @@ class TestDataQuality:
         assert result.iloc[0, 0] == 0, "Найдены отрицательные или NULL цены билетов"
     
     def test_flight_dates_valid(self, engine):
-        """Проверка что даты рейсов валидные"""
+        """Проверка что даты рейсов валидные (через JOIN с dim_dates)"""
         query = """
-        SELECT COUNT(*) FROM dwh.fact_flights 
-        WHERE flight_date < '2020-01-01' OR flight_date > '2030-12-31'
+        SELECT COUNT(*) FROM dwh.fact_flights ff
+        JOIN dwh.dim_dates dd ON ff.flight_date_id = dd.date_id
+        WHERE dd.full_date < '2020-01-01' OR dd.full_date > '2030-12-31'
         """
         result = pd.read_sql(query, engine)
         assert result.iloc[0, 0] == 0, "Найдены невалидные даты рейсов"
@@ -116,39 +116,43 @@ class TestDataQuality:
         assert len(result) == 0, f"Найдены невалидные коды аэропортов: {result}"
     
     def test_flight_numbers_format(self, engine):
-        """Проверка формата номеров рейсов"""
+        """Проверка формата номеров рейсов (через JOIN с dim_flights)"""
         query = """
-        SELECT flight_number FROM dwh.fact_flights 
-        WHERE flight_number IS NULL OR LENGTH(flight_number) < 2
+        SELECT df.flight_number FROM dwh.fact_flights ff
+        JOIN dwh.dim_flights df ON ff.flight_id = df.flight_id
+        WHERE df.flight_number IS NULL OR LENGTH(df.flight_number) < 2
         """
         result = pd.read_sql(query, engine)
         assert len(result) == 0, f"Найдены невалидные номера рейсов: {result}"
     
     def test_booking_status_values(self, engine):
-        """Проверка допустимых значений статусов бронирований"""
+        """Проверка допустимых значений статусов бронирований (через JOIN с dim_statuses)"""
         valid_statuses = ['confirmed', 'cancelled', 'pending', 'completed']
         query = f"""
-        SELECT DISTINCT status FROM dwh.fact_bookings 
-        WHERE status NOT IN ({','.join([f"'{s}'" for s in valid_statuses])})
+        SELECT DISTINCT ds.status_code FROM dwh.fact_bookings fb
+        JOIN dwh.dim_statuses ds ON fb.status_id = ds.status_id
+        WHERE ds.status_code NOT IN ({','.join([f"'{s}'" for s in valid_statuses])})
         """
         result = pd.read_sql(query, engine)
         assert len(result) == 0, f"Найдены невалидные статусы: {result}"
     
     def test_flight_status_values(self, engine):
-        """Проверка допустимых значений статусов рейсов"""
+        """Проверка допустимых значений статусов рейсов (через JOIN с dim_statuses)"""
         valid_statuses = ['scheduled', 'landed', 'delayed', 'cancelled', 'diverted']
         query = f"""
-        SELECT DISTINCT status FROM dwh.fact_flights 
-        WHERE status NOT IN ({','.join([f"'{s}'" for s in valid_statuses])})
+        SELECT DISTINCT ds.status_code FROM dwh.fact_flights ff
+        JOIN dwh.dim_statuses ds ON ff.status_id = ds.status_id
+        WHERE ds.status_code NOT IN ({','.join([f"'{s}'" for s in valid_statuses])})
         """
         result = pd.read_sql(query, engine)
         assert len(result) == 0, f"Найдены невалидные статусы рейсов: {result}"
     
     def test_no_null_flight_numbers(self, engine):
-        """Проверка отсутствия NULL в номерах рейсов"""
+        """Проверка отсутствия NULL в номерах рейсов (через JOIN с dim_flights)"""
         query = """
-        SELECT COUNT(*) FROM dwh.fact_flights 
-        WHERE flight_number IS NULL
+        SELECT COUNT(*) FROM dwh.fact_flights ff
+        JOIN dwh.dim_flights df ON ff.flight_id = df.flight_id
+        WHERE df.flight_number IS NULL
         """
         result = pd.read_sql(query, engine)
         assert result.iloc[0, 0] == 0, "Найдены NULL номера рейсов"

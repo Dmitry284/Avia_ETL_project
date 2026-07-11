@@ -205,59 +205,6 @@ def extract_weather_api(config):
         if config['processing']['on_validation_error'] == 'fail':
             raise
         return None
-def extract_maintenance_csv(config):
-    """Извлекает данные о обслуживании из CSV"""
-    if not config['sources'].get('csv_maintenance', {}).get('enabled', False):
-        logger.info("CSV обслуживание отключено в конфигурации")
-        return None
-    
-    logger.info("Извлечение данных о обслуживании из CSV...")
-    
-    csv_config = config['sources']['csv_maintenance']
-    files = csv_config['files']
-    
-    expected_columns = [
-        'aircraft_code', 'maintenance_type', 'scheduled_date',
-        'completed_date', 'status', 'cost', 'description'
-    ]
-    
-    all_dfs = []
-    
-    for file_path in files:
-        file_path = str(file_path)
-        
-        if not os.path.exists(file_path):
-            logger.error(f"Файл не найден: {file_path}")
-            continue
-        
-        try:
-            logger.info(f"Чтение файла: {file_path}")
-            df = pd.read_csv(file_path)
-            
-            if not validate_csv_structure(df, expected_columns, file_path):
-                logger.error(f"Файл {file_path} имеет неверную структуру")
-                continue
-            
-            all_dfs.append(df)
-            logger.info(f"Успешно прочитан файл {file_path}: {len(df)} записей")
-            
-        except Exception as e:
-            logger.error(f"Ошибка при чтении файла {file_path}: {str(e)}")
-    
-    if not all_dfs:
-        logger.warning("Не удалось прочитать ни один CSV файл обслуживания")
-        return None
-    
-    combined_df = pd.concat(all_dfs, ignore_index=True)
-    
-    output_path = '../output/raw/maintenance_raw.parquet'
-    os.makedirs('../output/raw', exist_ok=True)
-    combined_df.to_parquet(output_path, index=False)
-    
-    logger.info(f"Извлечено {len(combined_df)} записей об обслуживании")
-    logger.info(f"Сохранено в {output_path}")
-    
-    return combined_df
 
 if __name__ == '__main__':
     logger.info("НАЧАЛО ЭТАПА EXTRACT")
@@ -265,12 +212,11 @@ if __name__ == '__main__':
     try:
         config = load_config()
         logger.info("Конфигурация загружена успешно")
-        
+	maintenance_df = extract_maintenance_csv(config)        
         bookings_df = extract_postgres(config)
         csv_df = extract_csv_files(config)
         logs_df = extract_json_logs(config)
         weather_df = extract_weather_api(config)
-        maintenance_df = extract_maintenance_csv(config)
         
         logger.info("=" * 60)
         logger.info("ЭТАП EXTRACT ЗАВЕРШЕН УСПЕШНО")
