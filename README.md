@@ -2,30 +2,18 @@ Aviation ETL System
 ETL-система для консолидации данных авиапредприятия.
 
 ## Структура проекта
-`sources/` - Источники данных
-`sql_schema/` - Схема DWH
+`sources/` - Встроенные источники данных
+`sql_schema/` - SQL-Схемs DWH
 `scripts/` - ETL скрипты
-`output/` - Результаты работы
-`docs/` - Документация
+`output/` - Результаты работы ETL 
+`venv/` - Виртуальное окружение
+`tests/` - тесты качества DWH, структуры, функций очистки 
 
 ## Установка
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 docker-compose up -d
-cat > README.md << 'EOF'
 # Aviation ETL System 
 
-## Структура проекта 
-`sources/` - Источники данных
-`sql_schema/` - Схема DWH                         
-`scripts/` - ETL скрипты              
-`output/` - Результаты работы 
-`docs/` - Документация            
-                      
-## Установка 
-python3 -m venv venv 
-source venv/bin/activate 
-pip install -r requirements.txt 
-docker-compose up -d
 
