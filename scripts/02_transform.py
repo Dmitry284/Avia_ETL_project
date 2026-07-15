@@ -141,13 +141,7 @@ def normalize_flight_number(flight_num):
     return str(flight_num).upper().replace(' ', '')
 
 def standardize_formats(df, source_name):
-    """
-    Стандартизирует форматы данных:
-    - Аэропорты → 3-буквенный код в верхнем регистре
-    - Номера рейсов → без пробелов, в верхнем регистре
-    - Статусы → нижний регистр
-    - Валюты → верхний регистр
-    """
+
     logger.info(f"[{source_name}] Стандартизация форматов...")
     
     df = df.copy()
@@ -172,10 +166,7 @@ def standardize_formats(df, source_name):
     return df
 
 def detect_outliers(df, columns, source_name):
-    """
-    Выявляет выбросы методом IQR (межквартильный размах).
-    Возвращает отчёт по выбросам для каждой колонки.
-    """
+
     logger.info(f"[{source_name}] Выявление выбросов...")
     
     outliers_report = {}
@@ -214,10 +205,7 @@ def detect_outliers(df, columns, source_name):
     return outliers_report
 
 def validate_results(df, source_name, required_columns):
-    """
-    Финальная проверка результатов очистки.
-    Возвращает отчёт о качестве.
-    """
+
     logger.info(f"[{source_name}] Финальная проверка результатов...")
     
     report = {
@@ -389,9 +377,6 @@ def transform_logs(df):
     
     return df, quality_report
 
-# =====================================================
-# ТРАНСФОРМАЦИЯ ПОГОДЫ
-# =====================================================
 
 def transform_weather(df):
     """Трансформация погоды"""
@@ -532,14 +517,9 @@ if __name__ == '__main__':
         os.makedirs('../reports', exist_ok=True)
         with open('../reports/quality_report.json', 'w', encoding='utf-8') as f:
             json.dump(all_quality_reports, f, ensure_ascii=False, indent=2, default=str)
-        
-        logger.info("=" * 80)
+
         logger.info("ЭТАП TRANSFORM ЗАВЕРШЕН УСПЕШНО")
-        logger.info("=" * 80)
-        
-        # Итоговая сводка
         logger.info("\nИТОГОВАЯ СВОДКА ПО КАЧЕСТВУ ДАННЫХ:")
-        logger.info("-" * 60)
         for report in all_quality_reports:
             logger.info(f"Источник: {report['source']}")
             logger.info(f"  Строк до: {report['initial_rows']}")
@@ -547,7 +527,6 @@ if __name__ == '__main__':
             logger.info(f"  Отброшено: {report.get('rejected_rows', 0)}")
             logger.info(f"  Дубликатов удалено: {report.get('duplicates_removed', 0)}")
             logger.info(f"  Полнота: {report.get('completeness_after', 0):.2f}%")
-            logger.info("-" * 60)
         
         logger.info(f"\nОтчёт о качестве сохранён: reports/quality_report.json")
         

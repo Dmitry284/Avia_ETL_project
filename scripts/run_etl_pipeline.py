@@ -15,7 +15,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def run_script(script_name):
-    """Запускает Python скрипт"""
     logger.info(f"Запуск скрипта: {script_name}")
     
     try:
@@ -33,9 +32,7 @@ def run_script(script_name):
         return False
 
 if __name__ == '__main__':
-    logger.info("=" * 80)
     logger.info("НАЧАЛО ETL ПАЙПЛАЙНА")
-    logger.info("=" * 80)
     
     scripts = [
         '01_extract.py',
@@ -47,11 +44,9 @@ if __name__ == '__main__':
         if not run_script(script):
             logger.error(f"Пайплайн прерван на скрипте {script}")
             sys.exit(1)
-    
-    logger.info("=" * 80)
-    logger.info("ETL ПАЙПЛАЙН ЗАВЕРШЕН УСПЕШНО")
-    logger.info("=" * 80)
-    logger.info("Запуск тестов качества данных...")
+
+    logger.info("ПАЙПЛАЙН ЗАВЕРШЕН УСПЕШНО")
+    logger.info("Запуск тестов качества данных")
     try:
         result = subprocess.run(
             ['pytest', '../tests/test_data_quality.py', '-v'],

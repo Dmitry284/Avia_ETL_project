@@ -1,5 +1,4 @@
 sources:
-  # PostgreSQL база данных с бронированиями
   postgres:
     enabled: true
     host: localhost

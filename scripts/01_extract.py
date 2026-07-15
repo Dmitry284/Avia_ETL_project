@@ -17,7 +17,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def load_config():
-    """Загружает конфигурацию из config.yaml"""
     config_path = Path('../config.yaml')
     if not config_path.exists():
         logger.error(f"Конфигурационный файл не найден: {config_path}")
@@ -73,7 +72,6 @@ def extract_postgres(config):
 
 # Извлечение из CSV файлов
 def extract_csv_files(config):
-    """Извлекает данные из CSV файлов"""
     if not config['sources']['csv_flights']['enabled']:
         logger.info("CSV источник отключён в конфигурации")
         return None
@@ -206,7 +204,6 @@ def extract_weather_api(config):
             raise
         return None
 def extract_maintenance_csv(config):
-    """Извлекает данные о обслуживании из CSV"""
     if not config['sources'].get('csv_maintenance', {}).get('enabled', False):
         logger.info("CSV обслуживание отключено в конфигурации")
         return None
@@ -271,11 +268,9 @@ if __name__ == '__main__':
         logs_df = extract_json_logs(config)
         weather_df = extract_weather_api(config)
         maintenance_df = extract_maintenance_csv(config)
-        
-        logger.info("=" * 60)
+
         logger.info("ЭТАП EXTRACT ЗАВЕРШЕН УСПЕШНО")
-        logger.info("=" * 60)
-        
+
     except Exception as e:
         logger.error(f"Ошибка на этапе Extract: {str(e)}", exc_info=True)
         raise

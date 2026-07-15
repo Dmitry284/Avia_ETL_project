@@ -39,9 +39,6 @@ engine = get_dwh_engine()
 # Загрузка данных
 @st.cache_data
 def load_data():
-    """Загружает данные из DWH с расшифровкой через JOIN"""
-    
-    # Рейсы с расшифровкой
     flights_query = """
     SELECT 
         ff.flight_instance_id,
@@ -66,8 +63,7 @@ def load_data():
     ORDER BY dd.full_date, df.flight_number
     """
     flights_df = pd.read_sql(flights_query, engine)
-    
-    # Бронирования с расшифровкой
+
     bookings_query = """
     SELECT 
         fb.booking_id,
@@ -92,8 +88,7 @@ def load_data():
     ORDER BY dd.full_date DESC
     """
     bookings_df = pd.read_sql(bookings_query, engine)
-    
-    # Справочники
+
     airports_df = pd.read_sql("SELECT * FROM dwh.dim_airports ORDER BY airport_code", engine)
     aircraft_df = pd.read_sql("SELECT * FROM dwh.dim_aircraft ORDER BY aircraft_code", engine)
     
@@ -126,9 +121,6 @@ def load_maintenance_data():
 
 maint_df = load_maintenance_data()
 
-# ========================================
-# БОКОВАЯ ПАНЕЛЬ С ФИЛЬТРАМИ
-# ========================================
 st.sidebar.header("Фильтры")
 
 # Фильтр по аэропорту вылета
@@ -202,13 +194,10 @@ if 'booking_date' in filtered_bookings.columns and len(filtered_bookings) > 0 an
         (pd.to_datetime(filtered_bookings['booking_date']).dt.date <= date_range[1])
     ]
 
-# Показываем количество отфильтрованных записей
 st.sidebar.markdown("---")
 st.sidebar.info(f"Найдено бронирований: {len(filtered_bookings)} из {len(bookings_df)}")
 
-# ========================================
-# KPI МЕТРИКИ
-# ========================================
+
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
@@ -227,16 +216,12 @@ with col4:
 
 st.markdown("---")
 
-# ========================================
-# ВКЛАДКИ
-# ========================================
+
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "Рейсы", "Бронирования", "Аэропорты", "Самолеты", "Тех. обслуживание", "Статистика данных"
 ])
 
-# ========================================
-# ВКЛАДКА 1: РЕЙСЫ
-# ========================================
+
 with tab1:
     st.header("Анализ рейсов")
     
@@ -260,9 +245,7 @@ with tab1:
     st.subheader("Детали рейсов")
     st.dataframe(flights_df, use_container_width=True, hide_index=True)
 
-# ========================================
-# ВКЛАДКА 2: БРОНИРОВАНИЯ (С ФИЛЬТРАМИ)
-# ========================================
+
 with tab2:
     st.header("Анализ бронирований")
     
@@ -287,8 +270,7 @@ with tab2:
     fig5 = px.histogram(filtered_bookings, x='ticket_price', nbins=20, 
                         title='Распределение цен билетов')
     st.plotly_chart(fig5, use_container_width=True)
-    
-    # НОВОЕ: Распределение цен по категориям
+
     st.subheader("Распределение цен по категориям")
     
     col1, col2 = st.columns(2)
@@ -335,9 +317,6 @@ with tab2:
     st.subheader("Детали бронирований")
     st.dataframe(filtered_bookings, use_container_width=True, hide_index=True)
 
-# ========================================
-# ВКЛАДКА 3: АЭРОПОРТЫ
-# ========================================
 with tab3:
     st.header("Информация об аэропортах")
     
@@ -357,9 +336,6 @@ with tab3:
                   title='Количество рейсов по аэропортам вылета')
     st.plotly_chart(fig6, use_container_width=True)
 
-# ========================================
-# ВКЛАДКА 4: САМОЛЁТЫ
-# ========================================
 with tab4:
     st.header("Информация о самолетах")
     
@@ -379,9 +355,6 @@ with tab4:
                   title='Использование самолетов')
     st.plotly_chart(fig7, use_container_width=True)
 
-# ========================================
-# ВКЛАДКА 5: ТЕХ. ОБСЛУЖИВАНИЕ
-# ========================================
 with tab5:
     st.header("Техническое обслуживание самолётов")
     
@@ -441,9 +414,6 @@ with tab5:
     st.subheader("Детальная информация об обслуживании")
     st.dataframe(maint_df, use_container_width=True, hide_index=True)
 
-# ========================================
-# ВКЛАДКА 6: СТАТИСТИКА ДАННЫХ
-# ========================================
 with tab6:
     st.header("Статистика качества данных")
     
@@ -630,6 +600,5 @@ with tab6:
                         })
                     st.dataframe(pd.DataFrame(outlier_data), use_container_width=True, hide_index=True)
 
-# Футер
 st.markdown("---")
 st.markdown("**Данные обновлены:** " + pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"))

@@ -17,7 +17,6 @@ def get_booking_db_engine():
     return create_engine(connection_string)
 
 def get_dwh_engine():
-    """Создает подключение к целевой БД (aviation_dwh)"""
     host = os.getenv('DWH_DB_HOST', 'localhost')
     port = os.getenv('DWH_DB_PORT', '5434')
     user = os.getenv('DWH_DB_USER', 'aviation_user')

@@ -31,30 +31,25 @@ def get_dwh_engine():
     return create_engine(connection_string)
 
 def load_dim_airports(engine):
-    """Загружает справочник аэропортов"""
     logger.info("Загрузка dim_airports...")
-    
-    # Читаем очищенные данные
+
     bookings_df = pd.read_parquet('../output/cleaned/bookings_clean.parquet')
     flights_df = pd.read_parquet('../output/cleaned/flights_report_clean.parquet')
-    
-    # Собираем уникальные аэропорты из обоих источников
+
     airports_from_bookings = set(bookings_df['departure_airport'].dropna().unique()) | \
                              set(bookings_df['arrival_airport'].dropna().unique())
     airports_from_flights = set(flights_df['departure'].dropna().unique()) | \
                             set(flights_df['arrival'].dropna().unique())
     
     all_airports = airports_from_bookings | airports_from_flights
-    
-    # Создаем DataFrame
+
     airports_df = pd.DataFrame({
         'airport_code': list(all_airports),
         'airport_name': list(all_airports),
         'city': list(all_airports),
         'country': ['Россия'] * len(all_airports)
     })
-    
-    # Загружаем с UPSERT (обновляем если уже есть)
+
     with engine.connect() as conn:
         for _, row in airports_df.iterrows():
             query = text("""
@@ -76,13 +71,11 @@ def load_dim_airports(engine):
     logger.info(f"Загружено {len(airports_df)} аэропортов")
 
 def load_dim_aircraft(engine):
-    """Загружает справочник самолётов"""
     logger.info("Загрузка dim_aircraft...")
     
     bookings_df = pd.read_parquet('../output/cleaned/bookings_clean.parquet')
     flights_df = pd.read_parquet('../output/cleaned/flights_report_clean.parquet')
-    
-    # Собираем уникальные самолёты
+
     aircraft_from_bookings = set(bookings_df['aircraft_type'].dropna().unique())
     aircraft_from_flights = set(flights_df['aircraft_id'].dropna().unique())
     all_aircraft = aircraft_from_bookings | aircraft_from_flights
@@ -115,15 +108,12 @@ def load_dim_aircraft(engine):
     logger.info(f"Загружено {len(aircraft_df)} самолётов")
 
 def load_dim_dates(engine):
-    """Загружает справочник дат"""
     logger.info("Загрузка dim_dates...")
     
     bookings_df = pd.read_parquet('../output/cleaned/bookings_clean.parquet')
     flights_df = pd.read_parquet('../output/cleaned/flights_report_clean.parquet')
-    
-    # Собираем все даты
+
     dates = set()
-    
     if 'departure_time' in bookings_df.columns:
         dates.update(pd.to_datetime(bookings_df['departure_time']).dt.date.dropna().unique())
     if 'booking_date' in bookings_df.columns:
@@ -145,8 +135,7 @@ def load_dim_dates(engine):
         'quarter': [(d.month - 1) // 3 + 1 for d in dates],
         'is_weekend': [d.weekday() >= 5 for d in dates]
     })
-    
-    # Используем UPSERT вместо replace
+
     with engine.connect() as conn:
         for _, row in dates_df.iterrows():
             query = text("""
@@ -182,12 +171,10 @@ def load_dim_dates(engine):
     logger.info(f"Загружено {len(dates_df)} дат")
 
 def load_dim_passengers(engine):
-    """Загружает справочник пассажиров"""
     logger.info("Загрузка dim_passengers...")
     
     bookings_df = pd.read_parquet('../output/cleaned/bookings_clean.parquet')
-    
-    # Уникальные пассажиры
+
     passengers = bookings_df['passenger_name'].dropna().unique()
     
     passengers_df = pd.DataFrame({
@@ -207,16 +194,13 @@ def load_dim_passengers(engine):
     logger.info(f"Загружено {len(passengers_df)} пассажиров")
 
 def load_dim_flights(engine):
-    """Загружает справочник рейсов (маршрутов)"""
     logger.info("Загрузка dim_flights...")
     
     bookings_df = pd.read_parquet('../output/cleaned/bookings_clean.parquet')
     flights_df = pd.read_parquet('../output/cleaned/flights_report_clean.parquet')
-    
-    # Собираем уникальные маршруты
+
     unique_flights = []
-    
-    # Из бронирований
+
     for _, row in bookings_df.drop_duplicates(subset=['flight_number', 'departure_airport', 'arrival_airport']).iterrows():
         unique_flights.append({
             'flight_number': row['flight_number'],
@@ -224,8 +208,7 @@ def load_dim_flights(engine):
             'arrival_airport': row['arrival_airport'],
             'aircraft_type': row.get('aircraft_type')
         })
-    
-    # Из рейсов
+
     for _, row in flights_df.drop_duplicates(subset=['flight_number', 'departure', 'arrival']).iterrows():
         unique_flights.append({
             'flight_number': row['flight_number'],
@@ -233,22 +216,18 @@ def load_dim_flights(engine):
             'arrival_airport': row['arrival'],
             'aircraft_type': row.get('aircraft_id')
         })
-    
-    # Удаляем дубликаты
+
     flights_unique_df = pd.DataFrame(unique_flights).drop_duplicates(
         subset=['flight_number', 'departure_airport', 'arrival_airport']
     )
-    
-    # Получаем ID аэропортов и самолётов
+
     with engine.connect() as conn:
         airports_df = pd.read_sql("SELECT airport_id, airport_code FROM dwh.dim_airports", conn)
         aircraft_df = pd.read_sql("SELECT aircraft_id, aircraft_code FROM dwh.dim_aircraft", conn)
-    
-    # Маппинги
+
     airport_map = dict(zip(airports_df['airport_code'], airports_df['airport_id']))
     aircraft_map = dict(zip(aircraft_df['aircraft_code'], aircraft_df['aircraft_id']))
-    
-    # Загружаем рейсы
+
     with engine.connect() as conn:
         for _, row in flights_unique_df.iterrows():
             dep_id = airport_map.get(row['departure_airport'])
@@ -272,12 +251,10 @@ def load_dim_flights(engine):
     logger.info(f"Загружено {len(flights_unique_df)} маршрутов")
 
 def load_fact_bookings(engine):
-    """Загружает факт бронирований"""
     logger.info("Загрузка fact_bookings...")
     
     bookings_df = pd.read_parquet('../output/cleaned/bookings_clean.parquet')
-    
-    # Получаем маппинги ID
+
     with engine.connect() as conn:
         passengers_df = pd.read_sql("SELECT passenger_id, passenger_name FROM dwh.dim_passengers", conn)
         flights_df = pd.read_sql("""
@@ -293,19 +270,15 @@ def load_fact_bookings(engine):
     passenger_map = dict(zip(passengers_df['passenger_name'], passengers_df['passenger_id']))
     status_map = dict(zip(statuses_df['status_code'], statuses_df['status_id']))
     date_map = dict(zip(pd.to_datetime(dates_df['full_date']).dt.date, dates_df['date_id']))
-    
-    # Создаем маппинг для рейсов
+
     flight_map = {}
     for _, row in flights_df.iterrows():
         key = (row['flight_number'], row['dep_code'], row['arr_code'])
         flight_map[key] = row['flight_id']
-    
-    # Очищаем таблицу перед загрузкой
     with engine.connect() as conn:
         conn.execute(text("DELETE FROM dwh.fact_bookings"))
         conn.commit()
-    
-    # Загружаем данные
+
     records = []
     for _, row in bookings_df.iterrows():
         passenger_id = passenger_map.get(row['passenger_name'])
@@ -330,12 +303,10 @@ def load_fact_bookings(engine):
     logger.info(f"Загружено {len(records_df)} бронирований")
 
 def load_fact_flights(engine):
-    """Загружает факт рейсов"""
     logger.info("Загрузка fact_flights...")
 
     flights_df = pd.read_parquet('../output/cleaned/flights_report_clean.parquet')
 
-    # Получаем маппинги
     with engine.connect() as conn:
         flights_dim_df = pd.read_sql("""
             SELECT f.flight_id, f.flight_number,
@@ -353,7 +324,6 @@ def load_fact_flights(engine):
 
         dates_df = pd.read_sql("SELECT date_id, full_date FROM dwh.dim_dates", conn)
 
-    # flight_id по (номер рейса, аэропорт вылета, аэропорт прилёта)
     flight_map = {}
     for _, row in flights_dim_df.iterrows():
         key = (row['flight_number'], row['dep_code'], row['arr_code'])
@@ -362,12 +332,10 @@ def load_fact_flights(engine):
     status_map = dict(zip(statuses_df['status_code'], statuses_df['status_id']))
     date_map = dict(zip(pd.to_datetime(dates_df['full_date']).dt.date, dates_df['date_id']))
 
-    # Очищаем таблицу
     with engine.connect() as conn:
         conn.execute(text("DELETE FROM dwh.fact_flights"))
         conn.commit()
 
-    # Формируем записи
     records = []
     for _, row in flights_df.iterrows():
         flight_id = flight_map.get((row['flight_number'], row['departure'], row['arrival']))
@@ -376,7 +344,6 @@ def load_fact_flights(engine):
         flight_date_id = date_map.get(flight_date)
         status_id = status_map.get(row['status'])
 
-        # Расчёт задержки
         delay_minutes = None
         if pd.notna(row['actual_departure']) and pd.notna(row['scheduled_departure']):
             delay = (pd.to_datetime(row['actual_departure']) -
@@ -400,7 +367,6 @@ def load_fact_flights(engine):
     logger.info(f"Загружено {len(records_df)} рейсов")
 
 def load_fact_revenue(engine):
-    """Рассчитывает и загружает факт выручки"""
     logger.info("Загрузка fact_revenue...")
     
     query = """
@@ -420,8 +386,6 @@ def load_fact_revenue(engine):
     
     with engine.connect() as conn:
         revenue_df = pd.read_sql(query, conn)
-        
-        # Очищаем таблицу
         conn.execute(text("DELETE FROM dwh.fact_revenue"))
         conn.commit()
     
@@ -430,12 +394,10 @@ def load_fact_revenue(engine):
     logger.info(f"Загружено {len(revenue_df)} записей выручки")
 
 def load_fact_maintenance(engine):
-    """Загружает факт технического обслуживания"""
     logger.info("Загрузка fact_maintenance...")
     
     maintenance_df = pd.read_parquet('../output/cleaned/maintenance_clean.parquet')
-    
-    # Получаем маппинги
+
     with engine.connect() as conn:
         aircraft_df = pd.read_sql("SELECT aircraft_id, aircraft_code FROM dwh.dim_aircraft", conn)
         maint_types_df = pd.read_sql("SELECT maintenance_type_id, type_code FROM dwh.dim_maintenance_types", conn)
@@ -445,12 +407,11 @@ def load_fact_maintenance(engine):
     maint_type_map = dict(zip(maint_types_df['type_code'], maint_types_df['maintenance_type_id']))
     status_map = dict(zip(statuses_df['status_code'], statuses_df['status_id']))
     
-    # Очищаем таблицу
+
     with engine.connect() as conn:
         conn.execute(text("DELETE FROM dwh.fact_maintenance"))
         conn.commit()
-    
-    # Загружаем данные
+
     records = []
     for _, row in maintenance_df.iterrows():
         aircraft_id = aircraft_map.get(row['aircraft_code'])
@@ -476,14 +437,12 @@ if __name__ == '__main__':
     
     try:
         engine = get_dwh_engine()
-        
-        # Загружаем справочники
+
         load_dim_airports(engine)
         load_dim_aircraft(engine)
         load_dim_dates(engine)
         load_dim_passengers(engine)
-        load_dim_flights(engine)        
-        # Загружаем факты
+        load_dim_flights(engine)
         load_fact_bookings(engine)
         load_fact_flights(engine)
         load_fact_revenue(engine)

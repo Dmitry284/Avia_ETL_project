@@ -137,7 +137,6 @@ class TestDataQuality:
         assert len(result) == 0, f"Найдены невалидные статусы: {result}"
     
     def test_flight_status_values(self, engine):
-        """Проверка допустимых значений статусов рейсов (через JOIN с dim_statuses)"""
         valid_statuses = ['scheduled', 'landed', 'delayed', 'cancelled', 'diverted']
         query = f"""
         SELECT DISTINCT ds.status_code FROM dwh.fact_flights ff
@@ -148,7 +147,6 @@ class TestDataQuality:
         assert len(result) == 0, f"Найдены невалидные статусы рейсов: {result}"
     
     def test_no_null_flight_numbers(self, engine):
-        """Проверка отсутствия NULL в номерах рейсов (через JOIN с dim_flights)"""
         query = """
         SELECT COUNT(*) FROM dwh.fact_flights ff
         JOIN dwh.dim_flights df ON ff.flight_id = df.flight_id
